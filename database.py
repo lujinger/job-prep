@@ -16,3 +16,11 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # 基类（所有表模型都要继承它）
 Base = declarative_base()
+
+# 获取数据库会话
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
