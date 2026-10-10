@@ -22,7 +22,7 @@ def read_root():
 
 #  ---------- 创建 ----------
 
-@app.post("/bookmarks", response_model=BookmarkOut, status_code=status.HTTP_201_CREATED)
+@app.post("/bookmarks", response_model=BookmarkOut, status_code=status.HTTP_201_CREATED, tags=["bookmarks"])
 def create_bookmark(payload: BookmarkCreate, db: Session = Depends(get_db)):
     obj = Bookmark(title=payload.title, url=payload.url)
     db.add(obj)
@@ -56,6 +56,7 @@ def list_bookmarks(db: Session = Depends(get_db)):
 
 # ---------- 单条查询 ----------
 
+@app.get("/bookmarks/{bookmark_id}", response_model=BookmarkOut, tags=["bookmarks"])
 def get_bookmark(bookmark_id: int, db: Session = Depends(get_db)):
     item = db.get(Bookmark, bookmark_id)
     if item is None:
