@@ -4,7 +4,7 @@ from typing import List
 
 from database import engine, get_db
 from models import Base, Bookmark
-from schema import BookmarkCreate, BookmarkOut
+from schema import BookmarkCreate, BookmarkOut, BookmarkUpdate
 
 
 app = FastAPI()
@@ -67,3 +67,42 @@ def get_bookmark(bookmark_id: int, db: Session = Depends(get_db)):
         url=item.url,
         created_at=item.created_at.isoformat() if item.created_at else "",
     )
+
+
+# ---------- 更新 ----------
+
+@app.put("/bookmarks/{bookmark_id}", response_model=BookmarkOut, tags=["bookmarks"])
+def update_bookmark(bookmark_id: int, payload: BookmarkUpdate, db: Session = Depends(get_db)):
+    item = db.get(Bookmark, bookmark_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail=f"Bookmark with id={bookmark_id} not found")
+
+    # 逐个字段更新,只改非空字段
+    if payload.title is not None:
+        item.title = payload.title
+    if payload.url is not None:
+        item.url = payload.url
+    # 注意：不更新 created_at，保持创建时间不变
+
+    db.commit()
+    db.refresh(item)
+    return BookmarkOut(
+        id=item.id,
+        title=item.title,
+        url=item.url,
+        created_at=item.created_at.isoformat() if item.created_at else "",
+    )
+
+
+# ---------- 删除 ----------
+
+@app.delete("/bookmarks/{bookmark_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["bookmarks"])
+def delete_bookmark(bookmark_id: int, db: Session = Depends(get_db)):
+    item = db.get(Bookmark, bookmark_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail=f"Bookmark with id={bookmark_id} not found")
+
+    db.delete(item)
+    db.commit()
+    # 204 No Content：不返回响应体
+    return None
