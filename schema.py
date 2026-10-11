@@ -1,4 +1,5 @@
 from pydantic import BaseModel, HttpUrl, constr
+from typing import Optional
 
 class BookmarkCreate(BaseModel):
     title: constr(strip_whitespace=True, min_length=1, max_length=200)
@@ -14,3 +15,7 @@ class BookmarkOut(BaseModel):
     model_config = {
         "from_attributes": True   # Pydantic v2：允许从ORM对象读属性
     }
+
+class BookmarkUpdate(BaseModel):
+    title: Optional[str] = None
+    url: Optional[str] = None
