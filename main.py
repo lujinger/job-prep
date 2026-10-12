@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, status, HTTPException
+from fastapi import FastAPI, Depends, status, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -40,8 +40,23 @@ def create_bookmark(payload: BookmarkCreate, db: Session = Depends(get_db)):
 # ---------- 列表查询 ----------
 
 @app.get("/bookmarks", response_model=List[BookmarkOut], tags=["bookmarks"])
-def list_bookmarks(db: Session = Depends(get_db)):
-    items = db.query(Bookmark).order_by(Bookmark.created_at.desc()).all()
+def list_bookmarks(
+    skip: int = Query(0, ge=0, description="跳过前N条"),
+    limit: int = Query(10, ge=1, le=100, description="返回最多N条"),
+    q: str = Query(None, min_length=1, description="搜索关键词"),
+    db: Session = Depends(get_db)
+):
+    # 构建查询
+    query = db.query(Bookmark)
+
+    # 搜索过滤
+    if q:
+        query = query.filter(Bookmark.title.contains(q))
+
+    # 排序 + 分页
+    items = query.order_by(Bookmark.created_at.desc()).offset(skip).limit(limit).all()
+    # items = db.query(Bookmark).order_by(Bookmark.created_at.desc()).all()
+
     # 手动转成 BookmarkOut 列表（和前面的 create_bookmark 保持一致，created_at 转字符串）
     return [
         BookmarkOut(
