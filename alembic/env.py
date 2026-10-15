@@ -23,7 +23,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from models import Base  # Base 在 models.py 里
+from app.models import Base  # Base 在 models.py 里
 
 target_metadata = Base.metadata
 
