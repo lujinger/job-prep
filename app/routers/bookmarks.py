@@ -38,7 +38,8 @@ def list_bookmarks(
     skip: int = Query(0, ge=0, description="跳过前N条"),
     limit: int = Query(10, ge=1, le=100, description="返回最多N条"),
     q: str = Query(None, min_length=1, description="搜索关键词"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     # 构建查询
     query = db.query(Bookmark)
@@ -65,8 +66,11 @@ def list_bookmarks(
 
 # ---------- 单条查询 ----------
 
-@router.get("/bookmark_id}", response_model=BookmarkOut)
-def get_bookmark(bookmark_id: int, db: Session = Depends(get_db)):
+@router.get("/{bookmark_id}", response_model=BookmarkOut)
+def get_bookmark(
+        bookmark_id: int,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user)):
     item = db.get(Bookmark, bookmark_id)
     if item is None:
         raise HTTPException(status_code=404, detail=f"Bookmark with id={bookmark_id} not found")

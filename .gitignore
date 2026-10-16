@@ -28,3 +28,9 @@ Thumbs.db
 *.sqlite3
 *.db-wal
 *.db-shm
+
+# 测试报告
+report.html
+test-results.xml
+htmlcov/
+bookmark_test.db
