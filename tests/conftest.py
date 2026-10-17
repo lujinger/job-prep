@@ -46,7 +46,7 @@ def client():
     Base.metadata.drop_all(bind=engine)
 
 
-# ── pytest fixture：注册一个测试用户 ──
+# ── pytest fixture：注册一个测试用户（用户A） ──
 @pytest.fixture
 def test_user(client):
     """确保测试库里有一个用户"""
@@ -63,13 +63,43 @@ def test_user(client):
     return {"id": user.id, "username": "testuser", "password": "testpass123"}
 
 
-# ── pytest fixture：获取 token ──
+# ── pytest fixture：第二个测试用户（用户B） ──
+@pytest.fixture
+def test_user2(client):
+    """第二个测试用户，用于跨用户隔离测试"""
+    from app.dependencies import get_password_hash
+    db = TestingSessionLocal()
+    user = User(
+        username="testuser2",
+        hashed_password=get_password_hash("testpass456")
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    db.close()
+    return {"id": user.id, "username": "testuser2", "password": "testpass456"}
+
+
+# ── pytest fixture：获取用户A的 token ──
 @pytest.fixture
 def auth_headers(client, test_user):
     """登录获取 token，返回带 Authorization 头的 dict"""
     response = client.post(
         "/login",
         data={"username": test_user["username"], "password": test_user["password"]}
+    )
+    assert response.status_code == 200, f"登录失败: {response.json()}"
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+# ── pytest fixture：获取用户B的 token ──
+@pytest.fixture
+def auth_headers2(client, test_user2):
+    """第二个用户的 token，用于跨用户隔离测试"""
+    response = client.post(
+        "/login",
+        data={"username": test_user2["username"], "password": test_user2["password"]}
     )
     assert response.status_code == 200, f"登录失败: {response.json()}"
     token = response.json()["access_token"]

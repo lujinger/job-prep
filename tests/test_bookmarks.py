@@ -202,6 +202,7 @@ class TestUpdateBookmark:
         assert data["title"] == "不变标题"
         assert data["url"] == "https://unchanged.com"
 
+
 class TestDeleteBookmark:
     def test_delete_success(self, client, auth_headers):
         """删除成功"""
@@ -221,9 +222,7 @@ class TestDeleteBookmark:
         get_resp = client.get(f"/bookmarks/{bookmark_id}", headers=auth_headers)
         assert get_resp.status_code == 404
 
-        # 确认删了
-        get_resp = client.get(f"/bookmarks/{bookmark_id}", headers=auth_headers)
-        # 注意：你的项目里没有单条查询接口，所以这里验证列表里没有它
+        # 列表里也不应该有了
         list_resp = client.get("/bookmarks/", headers=auth_headers)
         ids = [b["id"] for b in list_resp.json()]
         assert bookmark_id not in ids
@@ -232,3 +231,100 @@ class TestDeleteBookmark:
         """删除不存在的书签 → 404"""
         response = client.delete("/bookmarks/99999", headers=auth_headers)
         assert response.status_code == 404
+
+
+class TestCrossUserIsolation:
+    """Day12 核心测试：跨用户隔离，所有接口返回 404"""
+
+    def test_user_b_cannot_get_user_a_bookmark(self, client, auth_headers, auth_headers2):
+        """用户A创建书签，用户B查询 → 404"""
+        # 用户A创建
+        create_resp = client.post(
+            "/bookmarks/",
+            json={"title": "A的书签", "url": "https://a.com"},
+            headers=auth_headers
+        )
+        assert create_resp.status_code == 201
+        bookmark_id = create_resp.json()["id"]
+
+        # 用户B查询 → 应该 404
+        response = client.get(f"/bookmarks/{bookmark_id}", headers=auth_headers2)
+        assert response.status_code == 404
+
+    def test_user_b_cannot_list_user_a_bookmarks(self, client, auth_headers, auth_headers2):
+        """用户A创建多条书签，用户B列表里看不到"""
+        # 用户A创建 2 条
+        for i in range(2):
+            client.post(
+                "/bookmarks/",
+                json={"title": f"A的书签{i}", "url": f"https://a{i}.com"},
+                headers=auth_headers
+            )
+
+        # 用户B列表 → 应该是空的
+        response = client.get("/bookmarks/", headers=auth_headers2)
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 0
+
+    def test_user_b_cannot_update_user_a_bookmark(self, client, auth_headers, auth_headers2):
+        """用户A创建书签，用户B更新 → 404"""
+        # 用户A创建
+        create_resp = client.post(
+            "/bookmarks/",
+            json={"title": "A的原始标题", "url": "https://a.com"},
+            headers=auth_headers
+        )
+        bookmark_id = create_resp.json()["id"]
+
+        # 用户B更新 → 应该 404
+        response = client.put(
+            f"/bookmarks/{bookmark_id}",
+            json={"title": "B想改的标题"},
+            headers=auth_headers2
+        )
+        assert response.status_code == 404
+
+    def test_user_b_cannot_delete_user_a_bookmark(self, client, auth_headers, auth_headers2):
+        """用户A创建书签，用户B删除 → 404"""
+        # 用户A创建
+        create_resp = client.post(
+            "/bookmarks/",
+            json={"title": "A的待删书签", "url": "https://a-delete.com"},
+            headers=auth_headers
+        )
+        bookmark_id = create_resp.json()["id"]
+
+        # 用户B删除 → 应该 404
+        response = client.delete(f"/bookmarks/{bookmark_id}", headers=auth_headers2)
+        assert response.status_code == 404
+
+        # 用户A仍然能查到（确认没被删）
+        get_resp = client.get(f"/bookmarks/{bookmark_id}", headers=auth_headers)
+        assert get_resp.status_code == 200
+        assert get_resp.json()["title"] == "A的待删书签"
+
+    def test_each_user_only_sees_own_bookmarks(self, client, auth_headers, auth_headers2):
+        """两个用户各自创建，列表只返回自己的"""
+        # 用户A创建 2 条
+        client.post("/bookmarks/", json={"title": "A1", "url": "https://a1.com"}, headers=auth_headers)
+        client.post("/bookmarks/", json={"title": "A2", "url": "https://a2.com"}, headers=auth_headers)
+
+        # 用户B创建 1 条
+        client.post("/bookmarks/", json={"title": "B1", "url": "https://b1.com"}, headers=auth_headers2)
+
+        # 用户A列表 → 2 条
+        resp_a = client.get("/bookmarks/", headers=auth_headers)
+        assert resp_a.status_code == 200
+        data_a = resp_a.json()
+        assert len(data_a) == 2
+        titles_a = [b["title"] for b in data_a]
+        assert "A1" in titles_a
+        assert "A2" in titles_a
+
+        # 用户B列表 → 1 条
+        resp_b = client.get("/bookmarks/", headers=auth_headers2)
+        assert resp_b.status_code == 200
+        data_b = resp_b.json()
+        assert len(data_b) == 1
+        assert data_b[0]["title"] == "B1"
