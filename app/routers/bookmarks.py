@@ -10,19 +10,22 @@ from app.models.user import User
 
 router = APIRouter(prefix="/bookmarks", tags=["bookmarks"])
 
-#  ---------- 创建，加上认证 ----------
+#  ---------- 创建，绑定当前用户 ----------
 
 @router.post("/", response_model=BookmarkOut, status_code=status.HTTP_201_CREATED)
 def create_bookmark(
     payload: BookmarkCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)  # 新增：需要登录
+    current_user: User = Depends(get_current_user)
 ):
-    obj = Bookmark(title=payload.title, url=payload.url)
+    obj = Bookmark(
+        title=payload.title,
+        url=payload.url,
+        user_id=current_user.id,  # ← 绑定当前登录用户
+    )
     db.add(obj)
     db.commit()
     db.refresh(obj)
-    # 统一把datetime转字符串，避免前端收到复杂对象
     return BookmarkOut(
         id=obj.id,
         title=obj.title,
@@ -31,7 +34,7 @@ def create_bookmark(
     )
 
 
-# ---------- 列表查询 ----------
+# ---------- 列表查询，只返回当前用户的 ----------
 
 @router.get("/", response_model=List[BookmarkOut])
 def list_bookmarks(
@@ -41,18 +44,16 @@ def list_bookmarks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # 构建查询
-    query = db.query(Bookmark)
+    # ← 只查当前用户的书签
+    query = db.query(Bookmark).filter(Bookmark.user_id == current_user.id)
 
-    # 搜索过滤
+    # 搜索过滤（只在当前用户的书签里搜）
     if q:
         query = query.filter(Bookmark.title.contains(q))
 
     # 排序 + 分页
     items = query.order_by(Bookmark.created_at.desc()).offset(skip).limit(limit).all()
-    # items = db.query(Bookmark).order_by(Bookmark.created_at.desc()).all()
 
-    # 手动转成 BookmarkOut 列表（和前面的 create_bookmark 保持一致，created_at 转字符串）
     return [
         BookmarkOut(
             id=i.id,
@@ -64,16 +65,22 @@ def list_bookmarks(
     ]
 
 
-# ---------- 单条查询 ----------
+# ---------- 单条查询，跨用户返回404 ----------
 
 @router.get("/{bookmark_id}", response_model=BookmarkOut)
 def get_bookmark(
-        bookmark_id: int,
-        db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_user)):
-    item = db.get(Bookmark, bookmark_id)
+    bookmark_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # ← 同时按 id + user_id 查，跨用户直接 404（不暴露存在性）
+    item = (
+        db.query(Bookmark)
+        .filter(Bookmark.id == bookmark_id, Bookmark.user_id == current_user.id)
+        .first()
+    )
     if item is None:
-        raise HTTPException(status_code=404, detail=f"Bookmark with id={bookmark_id} not found")
+        raise HTTPException(status_code=404, detail="Bookmark not found")
     return BookmarkOut(
         id=item.id,
         title=item.title,
@@ -82,7 +89,7 @@ def get_bookmark(
     )
 
 
-# ---------- 更新，增加认证 ----------
+# ---------- 更新，跨用户返回404 ----------
 
 @router.put("/{bookmark_id}", response_model=BookmarkOut)
 def update_bookmark(
@@ -91,16 +98,19 @@ def update_bookmark(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    item = db.get(Bookmark, bookmark_id)
+    # ← 同时按 id + user_id 查
+    item = (
+        db.query(Bookmark)
+        .filter(Bookmark.id == bookmark_id, Bookmark.user_id == current_user.id)
+        .first()
+    )
     if item is None:
-        raise HTTPException(status_code=404, detail=f"Bookmark with id={bookmark_id} not found")
+        raise HTTPException(status_code=404, detail="Bookmark not found")
 
-    # 逐个字段更新,只改非空字段
     if payload.title is not None:
         item.title = payload.title
     if payload.url is not None:
         item.url = payload.url
-    # 注意：不更新 created_at，保持创建时间不变
 
     db.commit()
     db.refresh(item)
@@ -112,7 +122,7 @@ def update_bookmark(
     )
 
 
-# ---------- 删除 ----------
+# ---------- 删除，跨用户返回404 ----------
 
 @router.delete("/{bookmark_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_bookmark(
@@ -120,11 +130,15 @@ def delete_bookmark(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    item = db.get(Bookmark, bookmark_id)
+    # ← 同时按 id + user_id 查
+    item = (
+        db.query(Bookmark)
+        .filter(Bookmark.id == bookmark_id, Bookmark.user_id == current_user.id)
+        .first()
+    )
     if item is None:
-        raise HTTPException(status_code=404, detail=f"Bookmark with id={bookmark_id} not found")
+        raise HTTPException(status_code=404, detail="Bookmark not found")
 
     db.delete(item)
     db.commit()
-    # 204 No Content：不返回响应体
     return None
