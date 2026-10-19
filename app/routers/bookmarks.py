@@ -130,7 +130,7 @@ def delete_bookmark(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # ← 同时按 id + user_id 查
+    # 同时按 id + user_id 查询，跨用户直接返回 404（不暴露资源存在性）
     item = (
         db.query(Bookmark)
         .filter(Bookmark.id == bookmark_id, Bookmark.user_id == current_user.id)
