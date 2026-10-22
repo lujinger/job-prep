@@ -279,3 +279,33 @@ coverage report
 - 数据库迁移
 - 运行全部测试
 - 生成覆盖率报告
+
+## 8.部署
+
+### 8.1.本地 Docker 部署
+
+```bash
+# 构建镜像
+docker compose build
+
+# 启动服务
+docker compose up
+
+# 访问 API 文档
+open http://localhost:8000/docs
+```
+
+### 8.2.环境变量
+
+| 变量名 | 必填 | 说明 | 默认值 |
+|--------|------|------|--------|
+| `PORT` | 否 | 服务监听端口 | `8000` |
+| `DATABASE_URL` | 否 | 数据库连接地址（不填则用 SQLite） | `sqlite:///./bookmark.db` |
+| `SECRET_KEY` | 是（生产） | JWT 签名密钥 | - |
+
+### 8.3.生产部署说明
+
+- 使用 `Dockerfile` 构建镜像，CMD 中已移除 `--reload`
+- 通过 `PORT` 环境变量动态绑定端口（适配 Render/Railway 等 PaaS）
+- 提供 `/health` 健康检查端点供平台探活
+- 建议使用 PostgreSQL 替代 SQLite 实现数据持久化
