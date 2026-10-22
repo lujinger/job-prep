@@ -13,3 +13,9 @@ app.include_router(bookmarks.router)
 @app.get("/")
 def root():
     return {"msg": "Bookmark API is running"}
+
+
+# 健康检查接口
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
