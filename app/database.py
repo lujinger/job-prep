@@ -1,13 +1,13 @@
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
+from app.config import DATABASE_URL
 
-# SQLite 数据库文件
-SQLALCHEMY_DATABASE_URL = "sqlite:///./bookmark.db"
+# SQLite 需要允许跨线程访问（FastAPI 多线程）；其它数据库不需要这个参数
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
 # 创建引擎
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
+    DATABASE_URL,
     connect_args={"check_same_thread": False}  # SQLite 特有
 )
 
@@ -16,6 +16,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # 基类（所有表模型都要继承它）
 Base = declarative_base()
+
 
 # 获取数据库会话
 def get_db():

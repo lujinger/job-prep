@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
     PORT: int = 8000
+    DATABASE_URL: str = "sqlite:///./bookmark.db"
 
 
 settings = Settings()
@@ -23,3 +24,4 @@ SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = settings.ALGORITHM
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 PORT = settings.PORT
+DATABASE_URL = settings.DATABASE_URL
