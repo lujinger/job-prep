@@ -7,8 +7,7 @@ from app.database import get_db
 from app.models.user import User
 from app.schemas.user import UserCreate, UserOut, Token
 from app.dependencies import (
-    get_password_hash, create_access_token, verify_password,
-    ACCESS_TOKEN_EXPIRE_MINUTES
+    get_password_hash, create_access_token, verify_password
 )
 
 
