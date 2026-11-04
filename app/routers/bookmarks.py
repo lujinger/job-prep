@@ -26,12 +26,7 @@ def create_bookmark(
     db.add(obj)
     db.commit()
     db.refresh(obj)
-    return BookmarkOut(
-        id=obj.id,
-        title=obj.title,
-        url=obj.url,
-        created_at=obj.created_at.isoformat() if obj.created_at else "",
-    )
+    return obj
 
 
 # ---------- 列表查询，只返回当前用户的 ----------
@@ -54,16 +49,7 @@ def list_bookmarks(
     # 排序 + 分页
     items = query.order_by(Bookmark.created_at.desc()).offset(skip).limit(limit).all()
 
-    return [
-        BookmarkOut(
-            id=i.id,
-            title=i.title,
-            url=i.url,
-            created_at=i.created_at.isoformat() if i.created_at else "",
-        )
-        for i in items
-    ]
-
+    return items
 
 # ---------- 单条查询，跨用户返回404 ----------
 
@@ -81,12 +67,7 @@ def get_bookmark(
     )
     if item is None:
         raise HTTPException(status_code=404, detail="Bookmark not found")
-    return BookmarkOut(
-        id=item.id,
-        title=item.title,
-        url=item.url,
-        created_at=item.created_at.isoformat() if item.created_at else "",
-    )
+    return item
 
 
 # ---------- 更新，跨用户返回404 ----------
@@ -114,12 +95,7 @@ def update_bookmark(
 
     db.commit()
     db.refresh(item)
-    return BookmarkOut(
-        id=item.id,
-        title=item.title,
-        url=item.url,
-        created_at=item.created_at.isoformat() if item.created_at else "",
-    )
+    return item
 
 
 # ---------- 删除，跨用户返回404 ----------

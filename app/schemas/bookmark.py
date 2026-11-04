@@ -1,4 +1,5 @@
-from pydantic import BaseModel, HttpUrl, constr
+from pydantic import BaseModel, ConfigDict, constr
+from datetime import datetime
 from typing import Optional
 
 
@@ -11,12 +12,9 @@ class BookmarkOut(BaseModel):
     id: int
     title: str
     url: str
-    # created_at 如果是DateTime，可写 datetime；这里用iso字符串更省事
-    created_at: str
+    created_at: datetime
 
-    model_config = {
-        "from_attributes": True   # Pydantic v2：允许从ORM对象读属性
-    }
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BookmarkUpdate(BaseModel):
