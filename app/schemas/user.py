@@ -1,4 +1,4 @@
-from pydantic import BaseModel, HttpUrl, constr
+from pydantic import BaseModel, ConfigDict, constr
 
 
 class UserCreate(BaseModel):
@@ -9,7 +9,7 @@ class UserCreate(BaseModel):
 class UserOut(BaseModel):
     id: int
     username: str
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Token(BaseModel):
