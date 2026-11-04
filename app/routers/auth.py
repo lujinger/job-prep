@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
-from datetime import timedelta
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.database import get_db
@@ -20,7 +19,7 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     # 检查用户名是否已存在
     existing = db.query(User).filter(User.username == user_in.username).first()
     if existing:
-        raise HTTPException(status_code=400, detail="用户名已存在")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="用户名已存在")
     hashed_pw = get_password_hash(user_in.password)
     user = User(username=user_in.username, hashed_password=hashed_pw)
     db.add(user)
@@ -34,6 +33,6 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="用户名或密码错误")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")
     access_token = create_access_token(data={"sub": str(user.id)})
     return {"access_token": access_token, "token_type": "bearer"}
